@@ -1,0 +1,15 @@
+.gradle/
+build/
+app/build/
+local.properties
+*.keystore
+*.jks
+*.apk
+*.aab
+
+# User-provided reference material and credentials stay local.
+扫码盘点宝.apk
+盘点宝商品数据.xlsx
+20260226门卫库房-101847.xlsx
+账号与密码.txt
+软件截图/
