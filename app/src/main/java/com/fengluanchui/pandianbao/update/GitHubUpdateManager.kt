@@ -27,9 +27,10 @@ data class GitHubRelease(
 /** Public GitHub Release updater. It never embeds a GitHub token. */
 class GitHubUpdateManager(private val context: Context) {
     private val preferences = context.getSharedPreferences("update_settings", Context.MODE_PRIVATE)
+    private val defaultRepository = "heixue318/pandianbao"
 
     var repository: String
-        get() = preferences.getString("github_repository", "") ?: ""
+        get() = preferences.getString("github_repository", defaultRepository) ?: defaultRepository
         set(value) = preferences.edit().putString("github_repository", value.trim()).apply()
 
     suspend fun checkLatest(): GitHubRelease? = withContext(Dispatchers.IO) {
