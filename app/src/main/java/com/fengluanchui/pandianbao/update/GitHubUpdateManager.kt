@@ -84,7 +84,10 @@ class GitHubUpdateManager(private val context: Context) {
         } }
         check(release.expectedSize < 0 || temporary.length() == release.expectedSize) { "下载文件大小与 GitHub Release 不一致" }
         check(digest.digest().joinToString("") { "%02x".format(it) } == release.sha256) { "APK SHA-256 校验失败" }
-        check(packageInfo(temporary.path).packageName == context.packageName) { "下载的安装包不属于盘点宝" }
+        val archiveInfo = packageInfo(temporary.path)
+        check(archiveInfo.packageName == context.packageName) { "下载的安装包不属于盘点宝" }
+        check(compareVersions(archiveInfo.versionName ?: "", release.versionName) == 0) { "下载 APK 的版本与 Release 标签不一致" }
+        check(isArchiveNewer(archiveInfo)) { "下载 APK 不是比当前应用更新的版本" }
         check(signerFingerprints(temporary.path) == signerFingerprints(null)) { "更新 APK 的签名与当前应用不一致" }
         check(temporary.renameTo(target)) { "无法准备更新安装包" }
         val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", target)
@@ -114,6 +117,13 @@ class GitHubUpdateManager(private val context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) context.packageManager.getPackageArchiveInfo(archivePath, PackageManager.PackageInfoFlags.of(PackageManager.GET_SIGNING_CERTIFICATES.toLong()))
             else @Suppress("DEPRECATION") context.packageManager.getPackageArchiveInfo(archivePath, PackageManager.GET_SIGNING_CERTIFICATES)
         } ?: error("无法读取 APK 信息")
+    }
+
+    private fun isArchiveNewer(archive: PackageInfo): Boolean {
+        val installed = packageInfo(null)
+        val archiveCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) archive.longVersionCode else @Suppress("DEPRECATION") archive.versionCode.toLong()
+        val installedCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) installed.longVersionCode else @Suppress("DEPRECATION") installed.versionCode.toLong()
+        return archiveCode > installedCode || (archiveCode == installedCode && compareVersions(archive.versionName ?: "", installed.versionName ?: "0") > 0)
     }
 
     private fun request(url: String): HttpResponse {
