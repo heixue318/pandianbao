@@ -317,7 +317,15 @@ class InventoryRepository(private val database: InventoryDatabase) {
             }
             val before = database.inventory().balance(line.productId, line.locationId)?.quantity ?: 0L
             val delta = line.quantity - before
-            database.inventory().insertMovement(StockMovementEntity(line.productId, line.locationId, document.id, delta, "实盘数量：${line.quantity}"))
+            database.inventory().insertMovement(
+                StockMovementEntity(
+                    productId = line.productId,
+                    locationId = line.locationId,
+                    documentId = document.id,
+                    delta = delta,
+                    note = "实盘数量：${line.quantity}"
+                )
+            )
             database.inventory().upsertBalance(StockBalanceEntity(line.productId, line.locationId, line.quantity))
         }
         check(database.stocktakes().complete(taskId) == 1) { "盘点任务状态已变化，请刷新后重试" }

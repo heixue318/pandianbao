@@ -4,9 +4,11 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -17,9 +19,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.saveable.rememberSaveable
 import com.fengluanchui.pandianbao.data.*
 import com.fengluanchui.pandianbao.scanner.BarcodeScannerActivity
 import com.fengluanchui.pandianbao.update.GitHubRelease
@@ -78,8 +80,12 @@ class MainActivity : ComponentActivity() {
     if (candidates != null && barcode != null) {
         val code = barcode!!; val found = candidates!!; val taskId = scanTaskId; val location = selectedLocation
         if (taskId == null || location == null) { error = "请先创建并打开快速盘点任务"; candidates = null; barcode = null }
-        else if (found.isEmpty()) ProductDialog("未知条码建档", code, onDismiss = { candidates = null; barcode = null }, onConfirm = { enteredCode, name, note -> scope.launch { runCatching { repository.addProductAndCount(taskId, enteredCode, name, note, location) }.onSuccess { error = "已建档，并已为本次盘点自动记 1"; candidates = null; barcode = null }.onFailure { error = it.message ?: "建档失败" } } })
-        else BarcodeProductChooser(found, onDismiss = { candidates = null; barcode = null }, onChoose = { product -> scope.launch { runCatching { repository.countProduct(taskId, product, location) }.onSuccess { error = "${product.name} 已计数 +1（${location.name}）" }.onFailure { error = it.message ?: "计数失败" }; candidates = null; barcode = null } })
+        else {
+            val activeTaskId: String = taskId
+            val activeLocation: LocationEntity = location
+            if (found.isEmpty()) ProductDialog("未知条码建档", code, onDismiss = { candidates = null; barcode = null }, onConfirm = { enteredCode, name, note -> scope.launch { runCatching { repository.addProductAndCount(activeTaskId, enteredCode, name, note, activeLocation) }.onSuccess { error = "已建档，并已为本次盘点自动记 1"; candidates = null; barcode = null }.onFailure { error = it.message ?: "建档失败" } } })
+            else BarcodeProductChooser(found, onDismiss = { candidates = null; barcode = null }, onChoose = { product -> scope.launch { runCatching { repository.countProduct(activeTaskId, product, activeLocation) }.onSuccess { error = "${product.name} 已计数 +1（${activeLocation.name}）" }.onFailure { error = it.message ?: "计数失败" }; candidates = null; barcode = null } })
+        }
     }
     error?.let { message -> AlertDialog(onDismissRequest = { error = null }, title = { Text("提示") }, text = { Text(message) }, confirmButton = { Button(onClick = { error = null }) { Text("知道了") } }) }
 }
